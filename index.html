@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Network Packet Analyzer — Real-Time Monitor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div id="authScreen">
+  <div class="terminal">
+    <div class="titlebar"><div class="tl"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="path">~/network-packet-analyzer</div></div>
+    <div class="term-body">
+      <div class="prompt-line"><span class="user">network</span><span>:~$</span><span id="typedCmd"></span><span class="cursor"></span></div>
+      <div class="brand-row"><h1>Network Packet Analyzer</h1><span class="ver">v3.0 · browser-native</span></div>
+      <div class="tagline">Authenticate to access the live network monitor</div>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="login">LOGIN</div>
+        <div class="tab" data-tab="register">REGISTER</div>
+      </div>
+
+      <form id="loginForm" class="active">
+        <div class="field"><label>USERNAME</label><div class="input-wrap"><span class="prefix">&gt;</span><input type="text" id="loginUser" autocomplete="username" required></div></div>
+        <div class="field"><label>PASSWORD</label><div class="input-wrap"><span class="prefix">&gt;</span><input type="password" id="loginPass" autocomplete="current-password" required></div></div>
+        <button type="submit" class="submit" id="loginBtn">Login</button>
+        <div class="msg" id="loginMsg"></div>
+      </form>
+
+      <form id="registerForm">
+        <div class="field"><label>NEW USERNAME</label><div class="input-wrap"><span class="prefix">&gt;</span><input type="text" id="regUser" autocomplete="username" required></div></div>
+        <div class="field"><label>NEW PASSWORD</label><div class="input-wrap"><span class="prefix">&gt;</span><input type="password" id="regPass" autocomplete="new-password" required></div></div>
+        <div class="field"><label>CONFIRM PASSWORD</label><div class="input-wrap"><span class="prefix">&gt;</span><input type="password" id="regPass2" autocomplete="new-password" required></div></div>
+        <button type="submit" class="submit" id="registerBtn">Register</button>
+        <div class="msg" id="registerMsg"></div>
+      </form>
+
+      <div class="footnote">Runs fully in your browser — <b>no server, no Python</b> required.</div>
+    </div>
+    <div class="scanline"></div>
+  </div>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="dashboardScreen">
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <span class="dotx off" id="statusDot"></span>
+        <div><h1>Network Packet Analyzer</h1><div class="sub" id="statusText">Idle — press Start Monitoring</div></div>
+      </div>
+      <div class="controls">
+        <select id="filterSel">
+          <option value="ALL">All Traffic</option>
+          <option value="HTTPS">HTTPS only</option>
+          <option value="HTTP">HTTP only</option>
+          <option value="FETCH">Fetch/XHR only</option>
+          <option value="PING">Ping only</option>
+        </select>
+        <button class="primary" id="startBtn">▶ Start Monitoring</button>
+        <button class="stop" id="stopBtn" disabled>■ Stop</button>
+        <button id="clearBtn">Clear</button>
+        <div id="userBadge">
+          <div style="font-size:11px;line-height:1.4;">
+            <div style="color:var(--text);" id="userName">—</div>
+            <div style="color:var(--text-dim);" id="userIp">resolving IP…</div>
+          </div>
+          <button id="logoutBtn" style="padding:8px 12px;">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="wave-panel">
+      <div class="wave-head"><span class="label">Live Throughput</span><span class="val" id="ppsVal">0 <span style="font-size:12px;color:var(--text-dim);">req/s</span></span></div>
+      <canvas id="wave"></canvas>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="panel-head"><span>Live Network Activity</span><span class="count" id="pktCount">0</span></div>
+        <div id="log"></div>
+        <div class="ping-box">
+          <input class="ctl" type="text" id="pingTarget" placeholder="Enter a hostname or IP to ping (e.g. 8.8.8.8, github.com)">
+          <button id="pingBtn">Ping</button>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="stat-cards">
+          <div class="card"><div class="k">Total Requests</div><div class="v" id="cardTotal">0</div></div>
+          <div class="card"><div class="k">Data Transferred</div><div class="v" id="cardBytes">0<span>KB</span></div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>Your Connection</span></div>
+          <div class="conn-card">
+            <div class="row2"><span class="k">Public IP</span><span class="v" id="connIp">resolving…</span></div>
+            <div class="row2"><span class="k">Local IP (LAN)</span><span class="v" id="connLocalIp">not detected yet</span></div>
+            <div class="row2"><span class="k">City</span><span class="v" id="connCity">—</span></div>
+            <div class="row2"><span class="k">Region</span><span class="v" id="connRegion">—</span></div>
+            <div class="row2"><span class="k">Country</span><span class="v" id="connCountry">—</span></div>
+            <div class="row2"><span class="k">ISP</span><span class="v" id="connIsp">—</span></div>
+            <div class="row2"><span class="k">Location Source</span><span class="v" id="connSource" style="color:var(--text-dim);">IP-based (approximate)</span></div>
+            <div class="row2"><span class="k">Coordinates</span><span class="v" id="connCoords">—</span></div>
+          </div>
+          <div class="ping-box" style="border-top:1px solid var(--border);">
+            <input class="ctl" type="text" id="ipCheckInput" placeholder="Enter an IP to check (blank = yours)">
+            <button id="ipCheckBtn">Check</button>
+          </div>
+          <div class="ping-box" style="padding-top:0;">
+            <button id="localIpBtn" style="width:100%;">🔍 Detect My Local IP</button>
+          </div>
+          <div class="ping-box" style="padding-top:0;">
+            <button id="gpsBtn" style="width:100%;">📍 Use My GPS Location (precise)</button>
+          </div>
+          <div id="ipCheckMsg" style="display:none;padding:0 16px 12px;font-size:11.5px;color:var(--danger);"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>Traffic Breakdown</span></div>
+          <div class="proto-list" id="protoList"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>Top Hosts Contacted</span></div>
+          <div class="talker-list" id="srcList"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer>Network Packet Analyzer runs entirely client-side. It monitors <b>real</b> browser network requests (via the Performance/Resource-Timing API) and lets you ping real hosts — it does not capture raw OS-level packets, which browsers cannot do for security reasons.</footer>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
